@@ -1,1 +1,1 @@
-# nasa-asteroid-tracker
+# asteroid-tracker
