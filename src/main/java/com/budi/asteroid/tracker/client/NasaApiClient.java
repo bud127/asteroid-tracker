@@ -7,12 +7,6 @@ import java.time.LocalDate;
 
 public interface NasaApiClient {
 
-    NasaNeoFeedResponse getNeoFeed(
-            LocalDate startDate,
-            LocalDate endDate
-    );
-
-    NasaNeoLookupResponse getNeoLookup(
-            String asteroidId
-    );
+    NasaNeoFeedResponse getNeoFeed(LocalDate startDate,LocalDate endDate);
+    NasaNeoLookupResponse getNeoLookup(String asteroidId);
 }
