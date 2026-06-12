@@ -8,11 +8,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
 public class AsteroidService {
-
+    private static final int MAX_RESULT = 10;
     private final NasaApiClient nasaApiClient;
     private final DateRangeValidator dateRangeValidator;
 
@@ -35,6 +36,8 @@ public class AsteroidService {
                 .stream()
                 .flatMap(List::stream)
                 .map(this::toResponse)
+                .sorted(Comparator.comparing(AsteroidResponse::getMissDistanceKm))
+                .limit(MAX_RESULT)
                 .toList();
     }
 
