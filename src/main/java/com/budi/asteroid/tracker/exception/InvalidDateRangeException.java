@@ -1,4 +1,8 @@
 package com.budi.asteroid.tracker.exception;
 
-public class InvalidDateRangeException {
+public class InvalidDateRangeException extends RuntimeException {
+
+   public InvalidDateRangeException(String message) {
+       super(message);
+   }
 }
