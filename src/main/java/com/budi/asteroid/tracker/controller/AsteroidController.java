@@ -4,10 +4,7 @@ import com.budi.asteroid.tracker.dto.AsteroidResponse;
 import com.budi.asteroid.tracker.service.AsteroidService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -27,6 +24,11 @@ public class AsteroidController {
     public List<AsteroidResponse> getAsteroids(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return asteroidService.findClosestAsteroids(startDate, endDate);
+    }
+
+    @GetMapping("/{id}")
+    public AsteroidResponse getAsteroidDetail(@PathVariable String id) {
+        return asteroidService.getAsteroidDetail(id);
     }
 
 }

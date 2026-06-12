@@ -2,7 +2,9 @@ package com.budi.asteroid.tracker.service;
 
 import com.budi.asteroid.tracker.client.NasaApiClient;
 import com.budi.asteroid.tracker.client.dto.NasaNeoFeedResponse;
+import com.budi.asteroid.tracker.client.dto.NasaNeoLookupResponse;
 import com.budi.asteroid.tracker.dto.AsteroidResponse;
+import com.budi.asteroid.tracker.exception.NasaApiException;
 import com.budi.asteroid.tracker.validator.DateRangeValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,16 +17,20 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
-import static org.mockito.Mockito.when;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AsteroidServiceTest {
 
     @Mock
     private NasaApiClient nasaApiClient;
+
     @Mock
     private DateRangeValidator dateRangeValidator;
+
     @InjectMocks
     private AsteroidService asteroidService;
 
@@ -36,6 +42,7 @@ class AsteroidServiceTest {
                 .thenReturn(feedResponse(asteroid("1","Far Asteroid","900000"),
                         asteroid("2","Closest Asteroid","100000")));
         List<AsteroidResponse> result=asteroidService.findClosestAsteroids(startDate,endDate);
+        verify(dateRangeValidator).validate(startDate, endDate);
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getName()).isEqualTo("Closest Asteroid");
         assertThat(result.get(1).getName()).isEqualTo("Far Asteroid");
@@ -89,4 +96,114 @@ class AsteroidServiceTest {
         asteroid.setCloseApproachData(List.of(approachData));
         return asteroid;
     }
+
+    @Test
+    void shouldSkipAsteroidWithIncompleteData() {
+        LocalDate startDate = LocalDate.of(2025, 1, 1);
+        LocalDate endDate = LocalDate.of(2025, 1, 7);
+        when(nasaApiClient.getNeoFeed(startDate, endDate))
+                .thenReturn(feedResponse(invalidAsteroid(),
+                        asteroid("valid", "Valid Asteroid", "100000")
+                ));
+
+        List<AsteroidResponse> result =
+                asteroidService.findClosestAsteroids(startDate, endDate);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getId()).isEqualTo("valid");
+    }
+
+    private NasaNeoFeedResponse.NasaAsteroid invalidAsteroid() {
+        NasaNeoFeedResponse.NasaAsteroid asteroid = new NasaNeoFeedResponse.NasaAsteroid();
+        asteroid.setId("invalid");
+        asteroid.setName("Invalid Asteroid");
+        return asteroid;
+    }
+
+    @Test
+    void shouldUseClosestApproachDistanceWhenAsteroidHasMultipleApproaches() {
+        LocalDate startDate = LocalDate.of(2025, 1, 1);
+        LocalDate endDate = LocalDate.of(2025, 1, 7);
+
+        when(nasaApiClient.getNeoFeed(startDate, endDate))
+                .thenReturn(feedResponse(asteroidWithMultipleApproaches()));
+
+        List<AsteroidResponse> result = asteroidService.findClosestAsteroids(startDate, endDate);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getMissDistanceKm())
+                .isEqualByComparingTo("100000");
+    }
+
+    private NasaNeoFeedResponse.NasaAsteroid asteroidWithMultipleApproaches() {
+        NasaNeoFeedResponse.NasaAsteroid asteroid = asteroid("multi", "Multi Approach Asteroid", "900000");
+
+        NasaNeoFeedResponse.CloseApproachData closerApproach = new NasaNeoFeedResponse.CloseApproachData();
+        NasaNeoFeedResponse.MissDistance closerMissDistance = new NasaNeoFeedResponse.MissDistance();
+
+        closerMissDistance.setKilometers(new BigDecimal("100000"));
+        closerApproach.setMissDistance(closerMissDistance);
+
+        asteroid.setCloseApproachData(List.of(asteroid.getCloseApproachData().get(0), closerApproach));
+
+        return asteroid;
+    }
+
+    @Test
+    void shouldReturnAsteroidDetailWithNasaJplUrl() {
+        when(nasaApiClient.getNeoLookup("123"))
+                .thenReturn(lookupResponse("123", "Asteroid Detail", "https://example.com/asteroid/123"));
+
+        AsteroidResponse result = asteroidService.getAsteroidDetail("123");
+
+        assertThat(result.getId()).isEqualTo("123");
+        assertThat(result.getName()).isEqualTo("Asteroid Detail");
+        assertThat(result.getNasaJplUrl()).isEqualTo("https://example.com/asteroid/123");
+    }
+
+    private NasaNeoLookupResponse lookupResponse(String id, String name,
+                                                 String nasaJplUrl) {
+        NasaNeoLookupResponse response = new NasaNeoLookupResponse();
+        response.setId(id);
+        response.setName(name);
+        response.setNasaJplUrl(nasaJplUrl);
+        response.setPotentiallyHazardous(false);
+
+        NasaNeoLookupResponse.EstimatedDiameter estimatedDiameter =
+                new NasaNeoLookupResponse.EstimatedDiameter();
+
+        NasaNeoLookupResponse.DiameterInMeters meters =
+                new NasaNeoLookupResponse.DiameterInMeters();
+
+        meters.setMin(BigDecimal.TEN);
+        meters.setMax(BigDecimal.valueOf(20));
+
+        estimatedDiameter.setMeters(meters);
+        response.setEstimatedDiameter(estimatedDiameter);
+
+        return response;
+    }
+
+    @Test
+    void shouldThrowExceptionWhenLookupResponseIsNull() {
+        when(nasaApiClient.getNeoLookup("123"))
+                .thenReturn(null);
+
+        assertThatThrownBy(() -> asteroidService.getAsteroidDetail("123"))
+                .isInstanceOf(NasaApiException.class);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenLookupResponseIsIncomplete() {
+        NasaNeoLookupResponse response = new NasaNeoLookupResponse();
+        response.setId("123");
+        response.setName("Asteroid Detail");
+
+        when(nasaApiClient.getNeoLookup("123"))
+                .thenReturn(response);
+
+        assertThatThrownBy(() -> asteroidService.getAsteroidDetail("123"))
+                .isInstanceOf(NasaApiException.class);
+    }
+
 }

@@ -10,4 +10,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class NasaApiProperties {
     private String baseUrl;
     private String key;
+    private int connectTimeout;
+    private int readTimeout;
 }
