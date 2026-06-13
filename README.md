@@ -75,6 +75,42 @@ http://localhost:8080
 ./gradlew test
 ```
 
+## Run Tests
+
+```bash
+./gradlew test
+```
+
+## Test Coverage
+
+This project uses JaCoCo to measure unit test coverage.
+
+### Generate Coverage Report
+
+```bash
+./gradlew clean test jacocoTestReport
+```
+
+### View Coverage Report
+
+After execution, open the generated HTML report:
+
+```text
+build/reports/jacoco/test/html/index.html
+```
+
+The report includes:
+
+- Line Coverage
+- Branch Coverage
+- Method Coverage
+- Class Coverage
+- Instruction Coverage
+
+## Coverage Report
+
+![Coverage Report](docs/coverage-report.png)
+
 ## API Documentation
 
 ### Get Closest Asteroids
