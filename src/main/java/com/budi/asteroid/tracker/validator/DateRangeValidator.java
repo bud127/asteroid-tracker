@@ -11,8 +11,7 @@ public class DateRangeValidator {
 
     private static final long MAX_RANGE_DAYS = 7;
 
-    public void validate(LocalDate startDate, LocalDate endDate
-    ){
+    public void validate(LocalDate startDate, LocalDate endDate){
         if (startDate.isAfter(endDate)) {
             throw new InvalidDateRangeException("Start date must not be after end date");
         }
